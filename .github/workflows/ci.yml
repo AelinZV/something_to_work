@@ -1,8 +1,14 @@
+
 name: CI
 
 on:
   push:
   pull_request:
+
+# Отменяем старые запуски при новых коммитах
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-test:
@@ -13,31 +19,38 @@ jobs:
       fail-fast: false
       matrix:
         os:
+          - ubuntu-latest
           - macos-latest
           - windows-latest
 
     steps:
+      # Получаем исходный код
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Кэшируем зависимости CMake
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: build/_deps
-          key: ${{ runner.os }}-deps-${{ hashFiles('CMakeLists.txt') }}
+          key: ${{ runner.os }}-${{ runner.arch }}-deps-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: |
-            ${{ runner.os }}-deps-
+            ${{ runner.os }}-${{ runner.arch }}-deps-
 
+      # Настраиваем проект
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
+      # Собираем проект параллельно
       - name: Build
-        run: cmake --build build --config Release
+        run: cmake --build build --config Release --parallel 4
 
+      # Запускаем тесты
       - name: Test
         working-directory: build
         run: ctest -C Release --output-on-failure --output-junit test-results.xml
 
+      # Сохраняем результаты тестирования
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4
@@ -46,13 +59,3 @@ jobs:
           path: build/test-results.xml
           if-no-files-found: warn
           retention-days: 7
-
-  result:
-    name: CI result
-    runs-on: ubuntu-latest
-    needs: build-test
-    if: always()
-
-    steps:
-      - name: Matrix result
-        run: echo "Build and test result - ${{ needs.build-test.result }}"
