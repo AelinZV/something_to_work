@@ -1,0 +1,16 @@
+build/
+cmake-build-*/
+.vscode/
+.idea/
+*.o
+*.obj
+*.exe
+*.log
+.env
+.env.*
+!.env.example
+
+build-qt/
+build-ci/
+*.sql.bak
+borderland_backup*.sql

@@ -1,0 +1,170 @@
+name: Borderland Contracts | Multi-stage CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: borderland-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Stage 1: lightweight source inspection.
+  source-check:
+    name: '01 | Validate sources'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Verify project layout and shell scripts
+        run: |
+          set -euo pipefail
+          test -f CMakeLists.txt
+          test -f src/domain/World.h
+          test -f src/service/GameService.cpp
+          test -f src/repository/PgGameRepository.cpp
+          test -f src/gui/main.cpp
+          test -f sql/init.sql
+          test -f tests/GameTests.cpp
+          bash -n .github/scripts/ci_postgres_smoke.sh
+          git diff --check
+
+  # Stage 2: compile and execute the 50 independent CTest cases without GUI or DB.
+  unit-tests:
+    name: '02 | Core build & 50 tests'
+    needs: source-check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential cmake ninja-build
+      - name: Configure core
+        run: cmake -S . -B build-core -G Ninja -DCMAKE_BUILD_TYPE=Release -DBORDERLAND_BUILD_GUI=OFF -DBUILD_TESTING=ON
+      - name: Build core, CLI, tests
+        run: cmake --build build-core --parallel 4
+      - name: Run unit tests
+        run: ctest --test-dir build-core --parallel 4 --output-on-failure --output-junit unit-results.xml
+      - name: Upload unit-test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-tests-report
+          path: build-core/unit-results.xml
+          if-no-files-found: warn
+
+  # Stage 3a: compile the real GUI and make sure its window can resize headlessly.
+  qt-gui:
+    name: '03a | Qt 6 GUI + smoke'
+    needs: unit-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Qt 6 and C++ dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            qt6-base-dev qt6-qpa-plugins libpq-dev libpqxx-dev
+      - name: Configure Qt GUI
+        run: cmake -S . -B build-gui -G Ninja -DCMAKE_BUILD_TYPE=Release -DBORDERLAND_BUILD_GUI=ON -DBUILD_TESTING=ON
+      - name: Build GUI, CLI and tests
+        run: cmake --build build-gui --parallel 4
+      - name: Ensure Qt executable exists
+        run: test -x build-gui/borderland_gui
+      - name: Run offscreen GUI smoke test
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: ctest --test-dir build-gui -R '^qt_gui_offscreen_smoke$' --output-on-failure --output-junit qt-smoke-results.xml
+      - name: Upload Qt smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qt-gui-report
+          path: build-gui/qt-smoke-results.xml
+          if-no-files-found: warn
+      - name: Upload Linux GUI binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: borderland-linux-binaries
+          path: |
+            build-gui/borderland_gui
+            build-gui/borderland_cli
+            assets/cover.png
+          if-no-files-found: error
+
+  # Stage 3b: real libpqxx calls against a temporary PostgreSQL service.
+  postgresql:
+    name: '03b | PostgreSQL integration'
+    needs: unit-tests
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: borderland_user
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: borderland
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U borderland_user -d borderland"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      BORDERLAND_DB: 'host=127.0.0.1 port=5432 dbname=borderland user=borderland_user password=ci_test_password'
+      PGCLIENTENCODING: UTF8
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install PostgreSQL client, libpqxx and compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            libpq-dev libpqxx-dev postgresql-client
+      - name: Configure PostgreSQL-enabled CLI
+        run: |
+          set -o pipefail
+          cmake -S . -B build-db -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DBORDERLAND_BUILD_GUI=OFF -DBUILD_TESTING=OFF | tee cmake-db.log
+          grep -q 'PostgreSQL storage: ENABLED' cmake-db.log
+      - name: Build CLI with libpqxx
+        run: cmake --build build-db --parallel 4
+      - name: Initialize fresh PostgreSQL schema
+        run: psql "$BORDERLAND_DB" -v ON_ERROR_STOP=1 -f sql/init.sql
+      - name: Run real save/load/contract integration smoke
+        run: bash .github/scripts/ci_postgres_smoke.sh ./build-db/borderland_cli
+      - name: Upload DB smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgresql-integration-report
+          path: ci-logs/
+          if-no-files-found: warn
+
+  # Stage 4: reached only after GUI and DB checks both succeed.
+  package:
+    name: '04 | Package sources'
+    needs: [qt-gui, postgresql]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Create clean source archive
+        run: |
+          mkdir -p dist
+          tar -czf dist/BorderlandContracts-source.tar.gz \
+            CMakeLists.txt README.md .gitignore \
+            src assets tests sql docs .github CHANGELOG*.md
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: borderland-source
+          path: dist/BorderlandContracts-source.tar.gz
+          if-no-files-found: error
+          retention-days: 14
