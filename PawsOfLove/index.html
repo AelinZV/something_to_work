@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#fff4e9"><meta name="description" content="Маленькая интерактивная история для любимой мамы.">
+<title>Пушистый сюрприз для мамы ♡</title>
+<link rel="icon" href="assets/paw.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://pyscript.net/releases/2026.2.1/core.css">
+<script type="module" src="https://pyscript.net/releases/2026.2.1/core.js"></script>
+</head>
+<body>
+<div class="decor" aria-hidden="true"><span>✿</span><span>♡</span><span>✧</span><span>❀</span><span>♡</span><span>✿</span></div>
+<div class="page">
+<header class="topbar"><div class="brand"><img src="assets/paw.svg" alt=""> Лапки любви <small>· для мамы</small></div><details class="music"><summary>♫ Музыка</summary><audio controls loop preload="none" src="assets/music.mp3" aria-label="Фоновая музыка"></audio></details></header>
+<main id="story" class="story" aria-label="Поздравительная история">
+<div class="steps" aria-label="Прогресс истории"><span id="chapter">Глава 1 из 7</span><div id="dots" class="dots" aria-hidden="true"><i class="active"></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+<section class="scene" id="start" aria-labelledby="start-title">
+<div class="art"><img src="assets/dog/start.webp" alt="Миттельшнауцер выглядывает из-за двери, украшенной цветами"><span class="art-label">Тук-тук! ♡</span></div>
+<div class="copy"><p class="eyebrow">Маленькая история с большой любовью</p><h1 id="start-title" tabindex="-1">Пушистый сюрприз<br>для мамы</h1><p>Сегодня у одного очень хорошего пёсика особенная миссия. Он приготовил кое-что специально для тебя!</p><button class="primary" id="start-button" disabled>Открыть сюрприз <span>♡</span></button><p id="loading" class="hint" role="status">Пёсик готовится… загружается Python.</p><noscript><p>Для этой открытки необходимо включить JavaScript.</p></noscript></div>
+</section>
+<section class="scene" id="intro" hidden aria-labelledby="intro-title">
+<div class="art"><img src="assets/dog/intro.webp" alt="Весёлый серый миттельшнауцер"><span class="art-label">Гав-гав!</span></div>
+<div class="copy"><p class="eyebrow">Глава 2 · Знакомство</p><h2 id="intro-title" tabindex="-1">Привет, мамочка!</h2><p>У меня для тебя сюрприз! Я очень старался, но мне нужна твоя помощь. Готова отправиться со мной в маленькое приключение?</p><button class="primary" id="intro-next">Давай! 🐾</button></div>
+</section>
+<section class="scene" id="pet" hidden aria-labelledby="pet-title">
+<button class="art pet-art" id="pet-picture" aria-label="Погладить собачку"><img src="assets/dog/pet.webp" alt="Миттельшнауцер с довольной мордочкой"><span class="art-label">Погладь меня!</span></button>
+<div class="copy"><p class="eyebrow">Глава 3 · Немного нежности</p><h2 id="pet-title" tabindex="-1">Погладь меня, пожалуйста!</h2><p>Нажимай на меня или на кнопку. Каждое поглаживание — ещё капелька любви.</p><div class="hearts" id="hearts" aria-hidden="true">♡ ♡ ♡ ♡ ♡</div><progress id="love-progress" max="5" value="0" aria-label="Уровень любви"></progress><p class="status" id="love-status" role="status">Уровень любви: 0 из 5</p><p class="wish" id="pet-message" aria-live="polite">Я уже виляю хвостиком!</p><button class="primary" id="pet-button">Погладить 🐾</button><button class="primary" id="pet-next" hidden>В цветочный сад →</button></div>
+</section>
+<section class="scene" id="flowers" hidden aria-labelledby="flowers-title">
+<div class="art"><img src="assets/dog/flowers.webp" alt="Миттельшнауцер с корзинкой цветов в саду"><span class="art-label">Для тебя — всё самое красивое</span></div>
+<div class="copy"><p class="eyebrow">Глава 4 · Цветочный сад</p><h2 id="flowers-title" tabindex="-1">Соберём букет!</h2><p>В каждом цветке спрятано особенное пожелание. Собери все пять.</p><div class="flower-grid" aria-label="Цветы">
+<button class="flower" id="flower-rose" data-flower="rose"><span>🌹</span>Роза</button><button class="flower" id="flower-tulip" data-flower="tulip"><span>🌷</span>Тюльпан</button><button class="flower" id="flower-daisy" data-flower="daisy"><span>🌼</span>Ромашка</button><button class="flower" id="flower-peony" data-flower="peony"><span>🌸</span>Пион</button><button class="flower" id="flower-sunflower" data-flower="sunflower"><span>🌻</span>Подсолнух</button></div><p id="flower-status" class="status" role="status">Собрано 0 из 5</p><p class="wish" id="flower-message" aria-live="polite">Выбери первый цветочек.</p><div id="bouquet" class="bouquet" aria-hidden="true"></div><button class="primary" id="flowers-next" disabled>К письмам →</button></div>
+</section>
+<section class="scene" id="letters" hidden aria-labelledby="letters-title">
+<div class="art"><img src="assets/dog/letters.webp" alt="Миттельшнауцер держит конверт в зубах"><span class="art-label">Пушистая почта</span></div>
+<div class="copy"><p class="eyebrow">Глава 5 · Почта любви</p><h2 id="letters-title" tabindex="-1">Три письма для тебя</h2><p>Открой их в любом порядке. В каждом — частичка тепла.</p><div class="letter-grid"><button class="letter" id="letter-wish" data-letter="wish" aria-pressed="false"><span>✉</span>Пожелание</button><button class="letter" id="letter-hug" data-letter="hug" aria-pressed="false"><span>✉</span>Объятия</button><button class="letter" id="letter-son" data-letter="son" aria-pressed="false"><span>✉</span>От сына</button></div><div class="paper" id="letter-message" aria-live="polite">Какое письмо откроем первым?</div><p id="letter-status" class="status" role="status">Открыто 0 из 3</p><button class="primary" id="letters-next" disabled>К подарку →</button></div>
+</section>
+<section class="scene" id="gift" hidden aria-labelledby="gift-title">
+<div class="art"><img src="assets/dog/intro.webp" alt="Собачка ждёт, когда мама откроет подарок"><span class="art-label">Последний сюрприз!</span></div>
+<div class="copy"><p class="eyebrow">Глава 6 · Сюрприз</p><h2 id="gift-title" tabindex="-1">А теперь — подарок!</h2><p>Я спрятал здесь кое-что очень важное. Потяни за бантик!</p><button id="gift-box" class="gift-box" aria-label="Открыть подарочную коробку"><span class="bow">♡</span><span class="lid"></span><span class="box-body"></span><span class="ribbon"></span></button><p id="gift-message" class="wish" aria-live="polite">Интересно, что же внутри?</p><button id="gift-button" class="primary">Открыть подарок 🎁</button><button id="gift-next" class="primary" hidden>Прочитать поздравление →</button></div>
+</section>
+<section class="scene" id="final" hidden aria-labelledby="final-title">
+<div class="art final-art"><img src="assets/dog/final.webp" alt="Миттельшнауцер с букетом и большим сердцем"><span class="art-label">Вся любовь — тебе ♡</span></div>
+<div class="copy"><p class="eyebrow">Глава 7 · Самое важное</p><h2 id="final-title" tabindex="-1">С Днём матери, мамочка!</h2><p>Спасибо тебе за твою любовь, заботу, доброту и терпение. За то, что ты всегда веришь в меня и согреваешь своим теплом.</p><p>Желаю тебе крепкого здоровья, счастья, исполнения желаний и как можно больше поводов улыбаться. Пусть каждый день будет наполнен радостью.</p><p class="love-line">Я очень тебя люблю! ♡</p><p class="signature">С любовью, твой сын.</p><div class="actions"><button class="primary" id="hug-button">Обнять ещё раз ♡</button><button class="secondary" id="restart-button">↻ Пройти заново</button></div><p id="hug-message" class="hint" aria-live="polite"></p></div>
+</section>
+<div id="particles" aria-hidden="true"></div>
+</main>
+<footer>Сделано с любовью и одной пушистой лапкой <span>♡</span></footer>
+</div>
+<script>setTimeout(()=>{const b=document.getElementById('start-button');if(b.disabled){document.getElementById('loading').textContent='Python ещё загружается. Проверь интернет; если не загрузится, обнови страницу.'}},25000);</script>
+<script type="py" src="./main.py"></script>
+</body></html>
